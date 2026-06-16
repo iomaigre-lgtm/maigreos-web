@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-accent: #C1FF72;
+  --color-accent-2: #7ED957;
+  --font-sans: var(--font-poppins), -apple-system, sans-serif;
+  --radius-glass: 20px;
+  --radius-card: 16px;
+  --radius-pill: 14px;
+  --radius-item: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #111111;
+}
