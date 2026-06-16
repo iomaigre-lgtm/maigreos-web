@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { getApiKey } from '@/lib/ai/decrypt-key'
 import { buildSystemPrompt } from '@/lib/prompts/system'
 import { carrosselPrompt } from '@/lib/prompts/carrossel'
@@ -17,17 +17,19 @@ export async function POST(req: Request) {
   }
   const { skill, input, clientId } = body
 
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
-  const [agencyRes, clientRes, clientCtxRes] = await Promise.all([
-    supabase.from('agency_context').select('*').single(),
+  const [agencyRes, clientRes, clientCtxRes, workspaceRes] = await Promise.all([
+    supabase.from('agency_context').select('*').limit(1).maybeSingle(),
     clientId ? supabase.from('clients').select('*').eq('id', clientId).single() : Promise.resolve({ data: null }),
     clientId ? supabase.from('client_context').select('*').eq('client_id', clientId).single() : Promise.resolve({ data: null }),
+    supabase.from('workspaces').select('id').order('created_at', { ascending: true }).limit(1).maybeSingle(),
   ])
 
   const agency = agencyRes.data as AgencyContext | null
   const client = clientRes.data as Client | null
   const clientContext = clientCtxRes.data as ClientContext | null
+  const workspaceId = workspaceRes.data?.id ?? null
 
   const apiKey = await getApiKey(supabase, 'claude')
   if (!apiKey) {
@@ -57,17 +59,19 @@ export async function POST(req: Request) {
       })
       break
     default:
-      userPrompt = `Executa a skill "${skill}" com os seguintes parâmetros:\n${JSON.stringify(input, null, 2)}`
+      userPrompt = `Executa a skill "${skill}" com os seguintes parâmetros:\n${JSON.stringify(input, null, 2)}\n\nSe houver um cliente, personaliza para ${clientName}.`
   }
 
   const anthropic = createAnthropic({ apiKey })
 
   const result = streamText({
-    model: anthropic('claude-sonnet-4-6'),
+    model: anthropic('claude-haiku-4-5-20251001'),
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
     onFinish: async ({ text }) => {
+      if (!workspaceId) return
       await supabase.from('generations').insert({
+        workspace_id: workspaceId,
         client_id: clientId ?? null,
         skill,
         input,

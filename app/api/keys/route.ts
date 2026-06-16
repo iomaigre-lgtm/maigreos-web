@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { encrypt } from '@/lib/ai/decrypt-key'
 
 export async function POST(req: Request) {
@@ -16,12 +16,29 @@ export async function POST(req: Request) {
     })
   }
 
-  const supabase = await createClient()
+  const supabase = createServiceClient()
+
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('id')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (!workspace) {
+    return new Response(JSON.stringify({ error: 'Workspace não encontrado. Tenta recarregar a página.' }), {
+      status: 500, headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
   const encrypted = encrypt(key)
 
   const { error } = await supabase
     .from('api_keys')
-    .upsert({ provider, encrypted_key: encrypted }, { onConflict: 'workspace_id,provider' })
+    .upsert(
+      { provider, encrypted_key: encrypted, workspace_id: workspace.id },
+      { onConflict: 'workspace_id,provider' }
+    )
 
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), {

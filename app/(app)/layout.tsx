@@ -2,9 +2,22 @@
 import { useState } from 'react'
 import { Sidebar } from '@/components/shell/sidebar'
 import { ChatPanel } from '@/components/shell/chat-panel'
+import { MobileNav } from '@/components/shell/mobile-nav'
 import { Glass } from '@/components/ui/glass'
 import { CarrosselForm } from '@/components/skills/carrossel-form'
 import { EmailForm } from '@/components/skills/email-form'
+import { GenericSkillForm, GENERIC_SKILL_CONFIGS } from '@/components/skills/generic-form'
+
+const SKILL_LABELS: Record<string, string> = {
+  carrossel: 'Carrossel',
+  'email-profissional': 'Email Profissional',
+  'roteiro-reel': 'Roteiro Reel',
+  'relatorio-metricas': 'Relatório Métricas',
+  'responder-avaliacoes': 'Responder Avaliações',
+  seo: 'SEO',
+  'relatorio-ads': 'Relatório Ads',
+  'anuncio-google': 'Anúncio Google',
+}
 
 function SkillOverlay({
   skillId,
@@ -15,41 +28,25 @@ function SkillOverlay({
   clientId?: string
   onClose: () => void
 }) {
-  const labelMap: Record<string, string> = {
-    'carrossel': 'Carrossel',
-    'email-profissional': 'Email Profissional',
-    'relatorio-metricas': 'Relatório Métricas',
-    'responder-avaliacoes': 'Responder Avaliações',
-    'seo': 'SEO',
-    'relatorio-ads': 'Relatório Ads',
-    'anuncio-google': 'Anúncio Google',
-    'roteiro-reel': 'Roteiro Reel',
-  }
-
   function renderForm() {
-    if (skillId === 'carrossel') {
-      return <CarrosselForm clientId={clientId} onClose={onClose} />
+    if (skillId === 'carrossel') return <CarrosselForm clientId={clientId} onClose={onClose} />
+    if (skillId === 'email-profissional') return <EmailForm clientId={clientId} onClose={onClose} />
+    if (GENERIC_SKILL_CONFIGS[skillId]) {
+      return <GenericSkillForm skillId={skillId} clientId={clientId} onClose={onClose} />
     }
-    if (skillId === 'email-profissional') {
-      return <EmailForm clientId={clientId} onClose={onClose} />
-    }
-    // Fallback for skills not yet implemented
     return (
-      <Glass style={{ width: 480, maxWidth: '100%', borderRadius: 20, padding: 32 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: 8 }}>
-          {labelMap[skillId] ?? skillId}
+      <Glass style={{ width: 380, borderRadius: 20, padding: 28 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: 8 }}>
+          {SKILL_LABELS[skillId] ?? skillId}
         </div>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 24 }}>
-          Formulário desta skill em desenvolvimento — disponível em breve.
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginBottom: 20 }}>
+          Disponível em breve.
         </div>
-        <button
-          onClick={onClose}
-          style={{
-            padding: '8px 20px', borderRadius: 10, background: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)',
-            fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
-          }}
-        >Fechar</button>
+        <button onClick={onClose} style={{
+          padding: '8px 20px', borderRadius: 10, background: 'rgba(255,255,255,0.07)',
+          border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)',
+          fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
+        }}>Fechar</button>
       </Glass>
     )
   }
@@ -59,12 +56,11 @@ function SkillOverlay({
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 50,
-        background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+        background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
       }}
     >
-      {/* Wrapper div stops propagation so clicks inside don't close the overlay */}
-      <div onClick={(e) => e.stopPropagation()}>
+      <div onClick={e => e.stopPropagation()}>
         {renderForm()}
       </div>
     </div>
@@ -73,25 +69,22 @@ function SkillOverlay({
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [activeSkill, setActiveSkill] = useState<string | null>(null)
-  const [activeClientId, setActiveClientId] = useState<string | undefined>(undefined)
-
-  // Expose setter so child pages can optionally set a clientId before a skill is opened.
-  // For now it's unused but wired for future use.
-  void setActiveClientId
 
   return (
-    <div style={{ minHeight: '100vh', padding: 14, background: '#111111' }}>
-      <div style={{ height: 'calc(100vh - 28px)', display: 'flex', gap: 10 }}>
+    <div className="app-shell">
+      <div className="app-shell-inner">
         <Sidebar onSkillClick={setActiveSkill} />
-        <main style={{ flex: 1, minWidth: 0 }}>
+        <main className="app-main">
           {children}
         </main>
         <ChatPanel workspaceId="" />
       </div>
+
+      <MobileNav onSkillsOpen={() => setActiveSkill('carrossel')} />
+
       {activeSkill && (
         <SkillOverlay
           skillId={activeSkill}
-          clientId={activeClientId}
           onClose={() => setActiveSkill(null)}
         />
       )}
